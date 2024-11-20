@@ -1,0 +1,13 @@
+{"BMS_Uart" : 9600, 
+ "GPS_Uart": 9600,
+ "SERVER_ADDRESS" : "emosens.in",
+ "HANDLER_ADDRESS" : "iot_handler.php",
+ "App_fota_URL"     :   "https://emo-energy-iot-app-ota.s3.ap-south-1.amazonaws.com/app_fota.json",
+ "PDP_Context" :    {   "apn" : "airteliot.com" , 
+                        "username" : " " , 
+                        "password" : " ",
+                        "ipType" : 2 , 
+                        "profile_id" : 1 , 
+                        "authType" : 0
+                    }
+}
