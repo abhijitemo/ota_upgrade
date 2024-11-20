@@ -140,17 +140,19 @@ def ota_upgrade_check():
                 if module_to_upgrade:
                     try:
                         result = run_fota(module_to_upgrade)
+                        I_LOG.info("[OTA_UPGRADE]", "FOTA UPGRADE OF FILES RETURNED: {}".format(result))
                         message = 'AT+UPGRADE={} || {}'.format(
-                            'ALL' if module_to_upgrade == 'ALL' else MODULE_FILES[module_to_upgrade],
-                            'DONE' if result else 'FAILED'
-                        )
-                        txtmsg = sms.sendTextMsg(phone_number, message, 'GSM')
-                        if txtmsg == 1:
-                            I_LOG.info("[OTA_UPGRADE]", "Sent acknowledgment message to source number")
-                        else:
-                            I_LOG.error("[OTA_UPGRADE]", "Failed to send acknowledgment message to source number")
-                        if result:
-                            Power.powerRestart()
+                                'ALL' if module_to_upgrade == 'ALL' else MODULE_FILES[module_to_upgrade],
+                                'DONE' if result is None or result is 0 else 'FAILED'
+                            )
+                        if result is None or result is 0:
+                            txtmsg = sms.sendTextMsg(phone_number, message, 'GSM')
+                            if txtmsg == 1:
+                                I_LOG.info("[OTA_UPGRADE]", "Sent acknowledgment message to source number")
+                            else:
+                                I_LOG.error("[OTA_UPGRADE]", "Failed to send acknowledgment message to source number")
+                                Power.powerRestart()
+                        
                     except Exception as e:
                         I_LOG.error("[OTA_UPGRADE]", "Exception occurred during upgrade: {}".format(e))
                         error_message = 'AT+UPGRADE=FAILED -- {}'.format(e)
@@ -165,23 +167,24 @@ def ota_upgrade_check():
 
 def run_fota(module=None):
     """Run the OTA update process for the specified module."""
-    fota = app_fota.new() 
+    base_url = "https://raw.githubusercontent.com/abhijitemo/ota_upgrade/master/"
+    fota = app_fota.new()
     try:
         if module == 'ALL':
-            download_list = [{'url': 'http://fotaiot.s3.ap-south-1.amazonaws.com/{}.py'.format(filename), 'file_name': '/usr/' + filename} for filename in MODULE_FILES.values()]
+            download_list = [{'url': '{}{}'.format(base_url, filename), 'file_name': '/usr/{}'.format(filename)} for filename in MODULE_FILES.values()]
             upgrade = fota.bulk_download(download_list)
             fota.set_update_flag()
             I_LOG.info("[OTA_UPGRADE]", "Upgrading all modules")
             utime.sleep(2)
-            return upgrade is None
+            return upgrade 
         elif isinstance(module, int) and module in MODULE_FILES:
-            file_name = '/usr/' + MODULE_FILES[module]
-            url = "http://fotaiot.s3.ap-south-1.amazonaws.com/{}.py".format(MODULE_FILES[module])
+            file_name = '/usr/{}'.format(MODULE_FILES[module])
+            url = "{}{}".format(base_url, MODULE_FILES[module])
             upgrade = fota.download(url, file_name)
             fota.set_update_flag()
             I_LOG.info("[OTA_UPGRADE]", "Upgrading module: {}".format(MODULE_FILES[module]))
             utime.sleep(2)
-            return upgrade == 0
+            return upgrade 
         else:
             raise ValueError("Invalid module name: {}".format(module))
     except Exception as e:
