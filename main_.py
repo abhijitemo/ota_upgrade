@@ -123,7 +123,7 @@ def state_machine():
                 bms_id, bms_data, gps_data = state.data_fetch()
                 feed_watchdog(None)
                 if ql_fs.path_exists(SD_UPLOAD_FILENAME):
-                    if sd_upload_fail_count < 3 and ql_fs.path_getsize(SD_UPLOAD_FILENAME) >= 10000 and net.csqQueryPoll() >=20:
+                    if sd_upload_fail_count < 3 and ql_fs.path_getsize(SD_UPLOAD_FILENAME) >= 100000 and net.csqQueryPoll() >=20:
                         print(ql_fs.path_getsize(SD_UPLOAD_FILENAME))
                         current_state = state.STATE_SD_CARD_UPLOAD  
                         sd_upload_flag = True
