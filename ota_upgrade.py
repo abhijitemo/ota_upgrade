@@ -16,7 +16,7 @@ MODULE_FILES = {
     5: 'hardware.py',
     6: 'iot_sm.py',
     7: 'logging.py',
-    8: 'main_.py',
+    8: 'main.py',
     9: 'network.py',
     10: 'Network_upload.py',
     11: 'ota_upgrade.py',
