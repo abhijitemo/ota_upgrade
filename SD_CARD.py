@@ -14,9 +14,10 @@ from usr.Data_Extract import global_datetime_list
 import usr.logging as I_LOG
 import usr.flags as flag
 import gc
+import ujson
 
 
-timer1 = Timer(Timer.Timer1)
+#timer1 = Timer(Timer.Timer1)
 
 FTP_HOST = flag.FTP_HOST
 FTP_PORT = flag.FTP_PORT
@@ -57,51 +58,29 @@ def check_sd_card():
         I_LOG.error("[SD_CARD]", "SD Card is not mounted.")
         return False
 
+
 def save_to_sd_card(filename, batch_data):
     try:
         I_LOG.info("[SD_CARD]", "Saving BMS data to SD card: {}".format(filename))
         with open(filename, "a+") as f:
-            gps_data = get_gps_data()
             for data in batch_data:
-                if data.startswith("AT+") and data.endswith(",\r\n"):
                 
-                    latitude, longitude = extract_lat_lon(gps_data)
-                    if global_datetime_list:
-                        timestamp = global_datetime_list.pop(0)  # Get the oldest datetime from the list
-                    else:
-                        timestamp = "0000-00-00 00:00:00"  # Default value if list is empty
-
-                    # Split timestamp into date and time parts
-                    date_part, time_part = timestamp.split()
-                    year, month, day = map(int, date_part.split('-'))
-                    hour, minute, second = map(int, time_part.split(':'))
-
-                    # Format timestamp as required "yyyy,mm,dd,00,hh,mm,ss"
-                    for_timestamp = "{:04d},{:02d},{:02d},00,{:02d},{:02d},{:02d}".format(year, month, day, hour, minute, second)
-                    data_to_write = data
-                    # Remove "AT+" prefix only if it's at the beginning
-                    if data_to_write.startswith("AT+,"):
-                        end_index = data_to_write.find(",\r\n")
-                        final_data = data_to_write[len("AT+,"):end_index]
-                    else:
-                        final_data = data_to_write
-
-                    f.write("{},{},{},{}\r\n".format(for_timestamp, final_data, latitude, longitude))
-                    strin = "{},{},{},{}\r\n".format(for_timestamp, final_data, latitude, longitude)
-                    I_LOG.info("[SD_CARD]", strin)
-                else:
-                    I_LOG.warning("[SD_CARD]", "Data format invalid and skipped: {}".format(data))
+                json_string = ujson.dumps(data)
+                
+                f.write(json_string + "\n")
+                I_LOG.info("[SD_CARD]", "Data saved: {}".format(json_string))
             
         I_LOG.info("[SD_CARD]", "BMS data saved to SD card: {}".format(filename))
     except Exception as e:
         I_LOG.error("[SD_CARD]", "Error saving BMS data to SD card: {}".format(e))
 
 
-def sd_ftp_send(feed_watchdog):
+
+def sd_ftp_send():
     bms_id = flag.BMS_ID
     ftp_directory = "{}{}".format(FTP_DIR_BASE, bms_id)
     ftp = None  # Initialize ftp variable for cleanup
-
+    gc.enable()
     try:
         I_LOG.info("[SD_CARD]", "File {} is above 1 MB, preparing to send.".format(LOCAL_FILENAME))
 
@@ -128,7 +107,7 @@ def sd_ftp_send(feed_watchdog):
         # Upload the file
         with open(LOCAL_FILENAME, 'rb') as file:
             I_LOG.info("[FTP]", "Storing the sd card file")
-            timer1.start(period=60000, mode=timer1.PERIODIC, callback=feed_watchdog)
+            
             res = ftp.storbinary('STOR {}'.format(ftp_filename), file)
             
             I_LOG.info("[FTP]", "FTP upload response: {}".format(res))
@@ -136,25 +115,29 @@ def sd_ftp_send(feed_watchdog):
         if res.startswith('226'):
             I_LOG.info("[FTP]", "Upload of {} to FTP server {} successful.".format(ftp_filename, FTP_HOST))
             # Clear the local file after a successful upload
-            timer1.stop()
+            #timer1.stop()
+            gc.collect()
             uos.remove(LOCAL_FILENAME)  # Truncate the file content
             I_LOG.info("[SD_CARD]", "Local file {} cleared after upload.".format(LOCAL_FILENAME))
             return True  # Indicate success
         else:
             I_LOG.error("[FTP]", "Upload of {} to FTP server failed.".format(ftp_filename))
-            timer1.stop()
-            uos.remove(LOCAL_FILENAME)
+            #timer1.stop()
+            gc.collect()
+            #uos.remove(LOCAL_FILENAME)
             return False  # Indicate failure
 
     except Exception as e:
         
         if e is '[Errno 103] ECONNABORTED':
             I_LOG.error("[FTP]", "Connection aborted error (Errno 103) during FTP upload.")
-            timer1.stop()
-            uos.remove(LOCAL_FILENAME)  # Remove file from SD card if ECONNABORTED occurs
+            #timer1.stop()
+            gc.collect()
+            #uos.remove(LOCAL_FILENAME)  # Remove file from SD card if ECONNABORTED occurs
         else:
             I_LOG.error("[FTP]", "Error during FTP file upload: {}".format(e))
-            timer1.stop()
+            gc.collect()
+            #timer1.stop()
 
 
         return False  # Indicate failure
@@ -263,29 +246,3 @@ def sd_extract(sd_data):
         return result
     return None
 
-# def read_sd_card_data():
-#     try:
-#         with open('sd/bms_data.txt', 'r+') as file:
-#             lines = file.read().split('\n')
-#     except OSError as e:
-#         I_LOG.error("[SD_CARD]", "Error reading SD card file: {}".format(e))
-#         return None
-
-#     if not lines:
-#         I_LOG.info("[SD_CARD]", "SD card empty")
-#         return None
-
-#     I_LOG.info("[SD_CARD]", "Read SD card data")
-
-#     for line in lines:
-#         extracted_data = sd_extract(line)
-#         if extracted_data:
-#             data_queue_sd.append(extracted_data)
-#         if len(data_queue_sd) >= max_queue_size:
-#             break
-
-#     with open('sd/bms_data.txt', 'w+') as file:
-#         for line in lines[max_queue_size:]:
-#             file.write(line + '\n')
-
-#     return data_queue_sd
