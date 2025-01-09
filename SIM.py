@@ -32,3 +32,4 @@ def get_sim_details():
             print('ICCID : {}'.format(flags.SIM_ICCID))
             return 1
 
+
