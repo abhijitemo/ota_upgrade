@@ -88,7 +88,8 @@ def process_acquired_data(bms_id, bms_data, gps_data):
 def append_data_to_queue(extracted_data, bms_data):
     with data_lock:
         data_queue_real.append(extracted_data)
-        data_queue_save.append(bms_data)
+        #data_queue_save.append(bms_data)
+        data_queue_save.append(extracted_data)
     I_LOG.info("[DATA_EXTRACT]", "Data appended to queue. Queue size: {}".format(len(data_queue_real)))
 
 def prepare_data_for_upload():
